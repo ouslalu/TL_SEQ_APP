@@ -704,7 +704,7 @@ def reference_coordinate(
 def check_the_snp_position_in_samples(
     vcf="",
     reference_loc="",
-    sample="",
+    region="",
     chromosome=None,
     start=0,
     end=0,
@@ -717,7 +717,7 @@ def check_the_snp_position_in_samples(
     arguments:
         vcf (str): the directory containing the vcf file for the SNPs.
         reference_loc =  the text file with the reference sequence
-        sample (str): sample name
+        region (str): region name
         chromosome (int or string): chromosome number [1-22, X, Y]
         start (int): the starting position of the reference on the human genome
         end (int): the ending position of the reference on the human genome
@@ -728,6 +728,13 @@ def check_the_snp_position_in_samples(
         product sequence with snps in lower case
         list of the SNPs in the sample sequence
     """
+
+    # get the treated sample name to use to check the SNP for the region
+    sample = labelling_summary_df.loc[
+        (labelling_summary_df["Region"] == region)
+        & (labelling_summary_df["Treatment"] == "c"),
+        "Sample name",
+    ].values[0]
 
     # get the forward prime
     f_primer = (
@@ -824,7 +831,7 @@ def check_the_snp_position_in_samples(
 def summary_report(
     vcf,
     reference_loc,
-    sample,
+    region,
     chromosome,
     start,
     end,
@@ -840,7 +847,7 @@ def summary_report(
     product_sequence, pos_on_sequence_list = check_the_snp_position_in_samples(
         vcf,
         reference_loc,
-        sample,
+        region,
         chromosome,
         start,
         end,
@@ -851,10 +858,10 @@ def summary_report(
     if not os.path.exists("summary"):
         os.mkdir("summary")
 
-    with open(f"summary/{sample}_report.txt", "w") as summary_file:
+    with open(f"summary/{region}_report.txt", "w") as summary_file:
         # header
         summary_file.write(
-            f"###.................{sample}.......................####\n\n\n"
+            f"###.................{region}.......................####\n\n\n"
         )
 
         # sequence with SNP
@@ -901,6 +908,12 @@ ref_loc = "inputs/reference_gene/gene_sequence_from_refseq.txt"
 # reference_coordinate(vcf_file, 11, 2181009, 2182439, ref_loc, "-")
 # check_the_snp_position_in_samples(vcf_file, 11, "c_24h_exon2_fr1_S33", ref_loc, 2181009, 2182439, gene_direction="-")
 
+
+# analyse all samples
+df = pd.read_csv(metadata)
+region = df["Region"].to_list()
+
+
 file_preparation(
     pear_merged_loc,
     metadata=metadata,
@@ -910,7 +923,7 @@ file_preparation(
 summary_report(
     vcf_file,
     ref_loc,
-    "c_24h_exon2_fr1_S33",
+    "exon2",
     11,
     2181009,
     2182439,

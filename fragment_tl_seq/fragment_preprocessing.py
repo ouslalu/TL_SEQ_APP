@@ -114,7 +114,7 @@ def read_length_plot(read_length_prop_df, sna):
             plt.figure(figsize=(4, 4))
 
             read_length_prop_df = read_length_prop_df.sort_values(by=["read_length"])
-            print(read_length_prop_df)
+            # print(read_length_prop_df)
 
             # Calculate the maximum read length proportion and determine the index
             max_length = max(read_length_prop_df["%_reads"])
@@ -167,7 +167,10 @@ def analysis_for_nacent_nucleotides(sna):
     # call the function that return
 
     sequenced_df = pd.read_csv(
-        f"{pear_merged_loc}/pear_merged/{sna}_merged.txt", sep="\t", header=None
+        f"{pear_merged_loc}/pear_merged/{sna}_merged.txt",
+        sep="\t",
+        header=None,
+        encoding="unicode_escape",
     )
 
     # get the the base quality files
@@ -411,7 +414,7 @@ def query(x):
     tc_count = 0
 
     for i in x:
-        if i == "T|C":
+        if "T|C" in i:
             tc_count += 1
 
     return tc_count
@@ -445,6 +448,125 @@ def count_number_of_tc_mutations(sna):
     df_prop_tc_mutations.columns = ["Number of T|C counts", "Proportion of reads"]
 
     return df_prop_tc_mutations
+
+
+def count_number_of_different_pos_tc_mutations(region, time):
+    """
+    Count all the positions T|C mutations in sample
+
+    Argument:
+        region: sample name
+        time
+    return:
+        None
+        make the plots for the T|C mutations
+
+    """
+
+    c_sample = labelling_summary_df[
+        (labelling_summary_df["Region"] == region)
+        & (labelling_summary_df["Time"] == time)
+        & (labelling_summary_df["Treatment"] == "c")
+    ]["Sample name"].iloc[0]
+
+    woc_sample = labelling_summary_df[
+        (labelling_summary_df["Region"] == region)
+        & (labelling_summary_df["Time"] == time)
+        & (labelling_summary_df["Treatment"] == "woc")
+    ]["Sample name"].iloc[0]
+
+    t_reads_c, phred_filtered_mutations_c, df_top_read_c = (
+        analysis_for_nacent_nucleotides(c_sample)
+    )
+
+    t_reads_woc, phred_filtered_mutations_woc, df_top_read_woc = (
+        analysis_for_nacent_nucleotides(woc_sample)
+    )
+
+    phred_filtered_mutations_c["pos|ref|query_count"] = phred_filtered_mutations_c[
+        "pos|ref|query"
+    ].apply(query)
+
+    phred_filtered_mutations_c = phred_filtered_mutations_c[
+        phred_filtered_mutations_c["pos|ref|query_count"] > 0
+    ]
+    process_pos_ref_query_c = phred_filtered_mutations_c["pos|ref|query"].to_list()
+
+    phred_filtered_mutations_woc["pos|ref|query_count"] = phred_filtered_mutations_woc[
+        "pos|ref|query"
+    ].apply(query)
+    phred_filtered_mutations_woc = phred_filtered_mutations_woc[
+        phred_filtered_mutations_woc["pos|ref|query_count"] > 0
+    ]
+    process_pos_ref_query_woc = phred_filtered_mutations_woc["pos|ref|query"].to_list()
+
+    process_pos_ref_query_c = [t.split(",") for t in process_pos_ref_query_c]
+    process_pos_ref_query_c = sum(process_pos_ref_query_c, [])
+
+    process_pos_ref_query_woc = [t.split(",") for t in process_pos_ref_query_woc]
+    process_pos_ref_query_woc = sum(process_pos_ref_query_woc, [])
+
+    process_pos_ref_query_c_df = pd.DataFrame(
+        {"pos|ref|query": process_pos_ref_query_c}
+    )
+    process_pos_ref_query_woc_df = pd.DataFrame(
+        {"pos|ref|query": process_pos_ref_query_woc}
+    )
+
+    process_pos_ref_query_c_df = (
+        process_pos_ref_query_c_df["pos|ref|query"]
+        .value_counts()
+        .to_frame()
+        .reset_index()
+        .head(10)
+    )
+    process_pos_ref_query_c_df["prop_c"] = (
+        process_pos_ref_query_c_df["count"] / t_reads_c
+    )
+
+    process_pos_ref_query_woc_df = (
+        process_pos_ref_query_woc_df["pos|ref|query"]
+        .value_counts()
+        .to_frame()
+        .reset_index()
+        .head(10)
+    )
+    process_pos_ref_query_woc_df["prop_woc"] = (
+        process_pos_ref_query_woc_df["count"] / t_reads_woc
+    )
+    process_pos_ref_query_c_df["treatment"] = ["c"] * process_pos_ref_query_c_df.shape[
+        0
+    ]
+    process_pos_ref_query_woc_df["treatment"] = [
+        "woc"
+    ] * process_pos_ref_query_woc_df.shape[0]
+
+    c_woc_df = pd.concat(
+        [process_pos_ref_query_c_df, process_pos_ref_query_woc_df], axis=0
+    )
+
+    plt.figure(figsize=(10, 4))
+    ax = sns.barplot(
+        data=c_woc_df,
+        x="pos|ref|query",
+        y="count",
+        hue="treatment",
+        edgecolor="black",
+        lw=2,
+    )
+
+    ax.spines["left"].set_linewidth(2.5)
+    ax.spines["bottom"].set_linewidth(2.5)
+
+    ax.spines["top"].set_edgecolor("white")
+    ax.spines["right"].set_edgecolor("white")
+    for i in ["top", "right"]:
+        ax.spines[i].set_visible("False")
+
+    # plt.yscale("log")
+    plt.title(f"{region}_{time}")
+    plt.savefig(f"plots/pos_tc_{region}_{time}.png", dpi=250, bbox_inches="tight")
+    # print(c_woc_df)
 
 
 def tc_mutations_plot(df, **kwargs):
@@ -536,8 +658,8 @@ def number_of_tc_mutations_plot(region, time):
     df_prop_tc_mutation_c_woc = pd.concat(
         [df_prop_tc_mutation_c, df_prop_tc_mutation_woc], axis=0
     )
-    print(df_prop_tc_mutation_c_woc)
-    tc_mutations_plot(df_prop_tc_mutation_c_woc, segment="exon2", time="24hr")
+    # print(df_prop_tc_mutation_c_woc)
+    tc_mutations_plot(df_prop_tc_mutation_c_woc, segment=region, time=time)
 
 
 # number_of_tc_mutations_plot("exon2", "24h")
@@ -776,12 +898,17 @@ def check_the_snp_position_in_samples(
     last_nuc_pos = start + f_primer_index + len(product_sequence)
     sample_region_on_the_chromosome = [i for i in range(first_nuc_pos, last_nuc_pos, 1)]
 
-    print(sample_region_on_the_chromosome)
+    # print(sample_region_on_the_chromosome)
 
     # get SNPs
     ref_snp_df = reference_coordinate(
         vcf, chromosome, start, end, reference_loc, gene_direction
     )
+
+    # save ref_snp_df
+    if not os.path.exists("SNP"):
+        os.mkdir("SNP")
+    ref_snp_df.to_csv(f"SNP/snp_in_gene_region.csv")
 
     # make dataframe with the SNP positions and the reference nucleotide (from the VCF file)
     snp_positions = ref_snp_df["pos"].to_list()
@@ -801,7 +928,7 @@ def check_the_snp_position_in_samples(
                 ref_from_snp = snp_pos_ref_dict_df[
                     snp_pos_ref_dict_df["snp_positions"] == reg
                 ]["snp_reference"].to_list()[0]
-                print(ref_from_snp)
+                # print(ref_from_snp)
 
                 # get the position of the SNP on the sample and not on the human genome reference
                 pos_on_sequence = reg - sample_region_on_the_chromosome[0]
@@ -858,7 +985,7 @@ def summary_report(
     if not os.path.exists("summary"):
         os.mkdir("summary")
 
-    with open(f"summary/{region}_report.txt", "w") as summary_file:
+    with open(f"summary/{region}_snp_report.txt", "w") as summary_file:
         # header
         summary_file.write(
             f"###.................{region}.......................####\n\n\n"
@@ -909,26 +1036,32 @@ ref_loc = "inputs/reference_gene/gene_sequence_from_refseq.txt"
 # check_the_snp_position_in_samples(vcf_file, 11, "c_24h_exon2_fr1_S33", ref_loc, 2181009, 2182439, gene_direction="-")
 
 
+# Use Argpase to turn this to command line input.
+
+
 # analyse all samples
 df = pd.read_csv(metadata)
-region = df["Region"].to_list()
+regions = list(set(df["Region"].to_list()))
+times = list(set(df["Time"].to_list()))
 
 
-file_preparation(
-    pear_merged_loc,
-    metadata=metadata,
-    folder_location=folder_location,
-)
+for region in regions:
+    file_preparation(
+        pear_merged_loc,
+        metadata=metadata,
+        folder_location=folder_location,
+    )
 
-summary_report(
-    vcf_file,
-    ref_loc,
-    "exon2",
-    11,
-    2181009,
-    2182439,
-    "-",
-    labelling_summary_df,
-)
-
-number_of_tc_mutations_plot("exon2", "24h")
+    summary_report(
+        vcf_file,
+        ref_loc,
+        region,
+        11,
+        2181009,
+        2182439,
+        "-",
+        labelling_summary_df,
+    )
+    for time in times:
+        number_of_tc_mutations_plot(region, time)
+        count_number_of_different_pos_tc_mutations(region, time)

@@ -9,13 +9,10 @@ import seaborn as sns
 import matplotlib as mpl
 import itertools
 import pysam
+import argparse
 
 
-def file_preparation(
-    pear_merged_loc,
-    metadata,
-    folder_location="./",
-):
+def file_preparation(pear_merged_loc, metadata, folder_location="./", base_quality=""):
     """
     preapares all the needed directory
 
@@ -23,6 +20,7 @@ def file_preparation(
         pear_merged_loc (str): location of the read input
         metadata_location (csv): metadata with the information about the inputs and treatments
         folder_location (dir): location
+        base_quality (dir): location of the base quality txt files.
 
     return metadata pandas dataframe
 
@@ -167,7 +165,7 @@ def analysis_for_nacent_nucleotides(sna):
     # call the function that return
 
     sequenced_df = pd.read_csv(
-        f"{pear_merged_loc}/pear_merged/{sna}_merged.txt",
+        f"{pear_merged_loc}/{sna}_merged.txt",
         sep="\t",
         header=None,
         encoding="unicode_escape",
@@ -175,7 +173,7 @@ def analysis_for_nacent_nucleotides(sna):
 
     # get the the base quality files
     base_qual = pd.read_csv(
-        f"{pear_merged_loc}/pear_merged/{sna}_merged_base_quality.txt",
+        f"{base_quality}/{sna}_merged_base_quality.txt",
         sep="\t",
         header=None,
     )
@@ -185,15 +183,14 @@ def analysis_for_nacent_nucleotides(sna):
 
     try:
         # This is to catch error resulting from the total reads not equal to total lines of base qualities
-        read_quality_length = pd.read_csv(f"{pear_merged_loc}/read_quality_length.csv")
-        t_read = read_quality_length[read_quality_length["sample"] == sna][
-            "total read"
-        ].to_list()[0]
-        qual = read_quality_length[read_quality_length["sample"] == sna][
-            " total base quality"
-        ].to_list()[0]
-        # merge the reads with their base quality
-        sequenced_df["base_quality"] = base_qual["base_quality"]
+
+        t_read = sequenced_df.shape[0]
+        qual = base_qual.shape[0]
+
+        print(t_read, qual)
+        if t_read == qual:
+            sequenced_df["base_quality"] = base_qual["base_quality"]
+
     except ValueError:
         return f"Error: The number of reads({t_read}) and base qualities({qual}) are different.Check the fastq files again"
 
@@ -520,9 +517,7 @@ def count_number_of_different_pos_tc_mutations(region, time):
         .reset_index()
         .head(10)
     )
-    process_pos_ref_query_c_df["prop_c"] = (
-        process_pos_ref_query_c_df["count"] / t_reads_c
-    )
+    process_pos_ref_query_c_df["prop"] = process_pos_ref_query_c_df["count"] / t_reads_c
 
     process_pos_ref_query_woc_df = (
         process_pos_ref_query_woc_df["pos|ref|query"]
@@ -531,7 +526,7 @@ def count_number_of_different_pos_tc_mutations(region, time):
         .reset_index()
         .head(10)
     )
-    process_pos_ref_query_woc_df["prop_woc"] = (
+    process_pos_ref_query_woc_df["prop"] = (
         process_pos_ref_query_woc_df["count"] / t_reads_woc
     )
     process_pos_ref_query_c_df["treatment"] = ["c"] * process_pos_ref_query_c_df.shape[
@@ -549,7 +544,7 @@ def count_number_of_different_pos_tc_mutations(region, time):
     ax = sns.barplot(
         data=c_woc_df,
         x="pos|ref|query",
-        y="count",
+        y="prop",
         hue="treatment",
         edgecolor="black",
         lw=2,
@@ -1023,7 +1018,8 @@ def summary_report(
 
 # folder containing all files
 folder_location = "/Users/olalekan/Desktop/TL_seq_App"
-pear_merged_loc = "inputs"
+pear_merged_loc = "inputs/pear_merged"
+base_quality = "inputs/base_quality"
 metadata = "inputs/sample_metadata.csv"
 
 vcf_file = "SNP/EndoC.all.chromosomes.eva.vcf.gz"
@@ -1035,9 +1031,12 @@ ref_loc = "inputs/reference_gene/gene_sequence_from_refseq.txt"
 # reference_coordinate(vcf_file, 11, 2181009, 2182439, ref_loc, "-")
 # check_the_snp_position_in_samples(vcf_file, 11, "c_24h_exon2_fr1_S33", ref_loc, 2181009, 2182439, gene_direction="-")
 
+chromosome = 11
 
-# Use Argpase to turn this to command line input.
+gene_pos_start = 2181009
+gene_pos_end = 2182439
 
+strandedness = "-"
 
 # analyse all samples
 df = pd.read_csv(metadata)
@@ -1045,23 +1044,155 @@ regions = list(set(df["Region"].to_list()))
 times = list(set(df["Time"].to_list()))
 
 
-for region in regions:
+for region in regions[0:1]:
     file_preparation(
         pear_merged_loc,
         metadata=metadata,
         folder_location=folder_location,
+        base_quality=base_quality,
     )
 
     summary_report(
         vcf_file,
         ref_loc,
         region,
-        11,
-        2181009,
-        2182439,
-        "-",
+        chromosome,
+        gene_pos_start,
+        gene_pos_end,
+        strandedness,
         labelling_summary_df,
     )
     for time in times:
         number_of_tc_mutations_plot(region, time)
         count_number_of_different_pos_tc_mutations(region, time)
+
+
+"""
+TO-DO:
+    make pear merged reads an input: pear_merged_dir = "/Users/olalekan/Desktop/TL_seq_App/inputs/pear_merged"
+    make base quality directory an input: base_qual_dir= "/Users/olalekan/Desktop/TL_seq_App/inputs/base_quality"
+
+
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Identify newly transcribed reads")
+    parser.add_argument(
+        "--folder_location",
+        type=str,
+        default="",
+        help="Folder containing all files for analysis.",
+    )
+    parser.add_argument(
+        "--pear_merged_loc",
+        type=str,
+        default="",
+        help="Subdirectory for merged output files.",
+    )
+    parser.add_argument(
+        "--metadata",
+        type=str,
+        default="",
+        help="Path to the sample metadata csv file.",
+    )
+    parser.add_argument(
+        "--vcf_file",
+        type=str,
+        default="",
+        help="Path to the VCF file for SNPs",
+    )
+    parser.add_argument(
+        "--ref_loc",
+        type=str,
+        default="",
+        help="Path to the reference sequence file for the sample",
+    )
+    parser.add_argument(
+        "--chromosome",
+        type=str,
+        default=None,
+        choices=[
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            "X",
+            "Y",
+            "x",
+            "y",
+        ],
+        help="chromosome in which the gene of interest is located.",
+    )
+    parser.add_argument(
+        "--gene_pos_start",
+        type=int,
+        default=0,
+        help="Start position of the gene of interest.",
+    )
+    parser.add_argument(
+        "--gene_pos_end",
+        type=int,
+        default=0,
+        help="End position of the gene of interest.",
+    )
+    parser.add_argument(
+        "--strandedness",
+        type=str,
+        default="-",
+        choices=["+", "-"],
+        help="Strandedness of the gene, either '+' or '-'.",
+    )
+
+    args = parser.parse_args()
+
+    # Read the metadata to determine regions and times
+    df = pd.read_csv(args.metadata)
+    regions = list(set(df["Region"].to_list()))
+    times = list(set(df["Time"].to_list()))
+
+    for region in regions:
+        file_preparation(
+            args.pear_merged_loc,
+            metadata=args.metadata,
+            folder_location=args.folder_location,
+        )
+
+        summary_report(
+            args.vcf_file,
+            args.ref_loc,
+            region,
+            args.chromosome,
+            args.gene_pos_start,
+            args.gene_pos_end,
+            args.strandedness,
+            labelling_summary_df=None,  # Define or modify this according to actual use
+        )
+
+        for time in times:
+            number_of_tc_mutations_plot(region, time)
+            count_number_of_different_pos_tc_mutations(region, time)
+
+
+if __name__ == "__main__":
+    main()
+
+"""

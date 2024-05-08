@@ -12,7 +12,7 @@ import pysam
 import argparse
 
 
-def file_preparation(pear_merged_loc, metadata, folder_location="./", base_quality=""):
+def file_preparation(pear_merged_loc, metadata, folder_location, base_quality):
     """
     preapares all the needed directory
 
@@ -38,7 +38,8 @@ def file_preparation(pear_merged_loc, metadata, folder_location="./", base_quali
 
     # labelling_summary to get the information on the samples.
     global labelling_summary_df
-    labelling_summary_df = pd.read_csv(metadata)
+    labelling_summary_df = metadata
+    # print(labelling_summary_df)
 
 
 def process_pos_ref_query(x):
@@ -150,7 +151,7 @@ def read_length_plot(read_length_prop_df, sna):
             plt.ylabel("Proportion (%)")
             plt.title(sna.replace("_", " "))
             plt.savefig(f"plots/{sna}_trial.png", dpi=250, bbox_inches="tight")
-            # plt.show()
+            plt.close()
 
     except KeyError:
         print(f"dataframe does not have the read_length and the %_reads columns")
@@ -562,6 +563,7 @@ def count_number_of_different_pos_tc_mutations(region, time):
     plt.title(f"{region}_{time}")
     plt.savefig(f"plots/pos_tc_{region}_{time}.png", dpi=250, bbox_inches="tight")
     # print(c_woc_df)
+    plt.close()
 
 
 def tc_mutations_plot(df, **kwargs):
@@ -614,6 +616,7 @@ def tc_mutations_plot(df, **kwargs):
         os.mkdir("plots")
 
     plt.savefig(f"plots/{segment}_{time}.png", dpi=250, bbox_inches="tight")
+    plt.close()
 
 
 def number_of_tc_mutations_plot(region, time):
@@ -1015,7 +1018,7 @@ def summary_report(
 # get the sample names that I'm doing analysis for
 # samples = labelling_summary_df["Sample name"].to_list()
 
-
+"""
 # folder containing all files
 folder_location = "/Users/olalekan/Desktop/TL_seq_App"
 pear_merged_loc = "inputs/pear_merged"
@@ -1067,12 +1070,12 @@ for region in regions[0:1]:
         count_number_of_different_pos_tc_mutations(region, time)
 
 
-"""
+
 TO-DO:
     make pear merged reads an input: pear_merged_dir = "/Users/olalekan/Desktop/TL_seq_App/inputs/pear_merged"
     make base quality directory an input: base_qual_dir= "/Users/olalekan/Desktop/TL_seq_App/inputs/base_quality"
 
-
+ """
 
 
 def main():
@@ -1081,13 +1084,19 @@ def main():
         "--folder_location",
         type=str,
         default="",
-        help="Folder containing all files for analysis.",
+        help="Directory to save the output for the analysis",
     )
     parser.add_argument(
         "--pear_merged_loc",
         type=str,
         default="",
-        help="Subdirectory for merged output files.",
+        help="Directory for merged output files.",
+    )
+    parser.add_argument(
+        "--base_quality",
+        type=str,
+        default="",
+        help="directory of the base_quality",
     )
     parser.add_argument(
         "--metadata",
@@ -1109,7 +1118,7 @@ def main():
     )
     parser.add_argument(
         "--chromosome",
-        type=str,
+        type=int,
         default=None,
         choices=[
             1,
@@ -1169,11 +1178,20 @@ def main():
     regions = list(set(df["Region"].to_list()))
     times = list(set(df["Time"].to_list()))
 
+    # print(df)
+
+    global pear_merged_loc
+    global base_quality
+
+    pear_merged_loc = args.pear_merged_loc
+    base_quality = args.base_quality
+
     for region in regions:
         file_preparation(
-            args.pear_merged_loc,
-            metadata=args.metadata,
+            pear_merged_loc=args.pear_merged_loc,
+            metadata=df,
             folder_location=args.folder_location,
+            base_quality=args.base_quality,
         )
 
         summary_report(
@@ -1184,7 +1202,7 @@ def main():
             args.gene_pos_start,
             args.gene_pos_end,
             args.strandedness,
-            labelling_summary_df=None,  # Define or modify this according to actual use
+            labelling_summary_df=df,  # Define or modify this according to actual use
         )
 
         for time in times:
@@ -1195,4 +1213,5 @@ def main():
 if __name__ == "__main__":
     main()
 
-"""
+
+# The to fix in the above is that it runs multipe samples at once - such that it does a sample at a time.

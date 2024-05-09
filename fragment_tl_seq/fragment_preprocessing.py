@@ -10,6 +10,11 @@ import matplotlib as mpl
 import itertools
 import pysam
 import argparse
+import warnings
+
+# warnings
+warnings.simplefilter(action="ignore", category=FutureWarning)
+pd.options.mode.chained_assignment = None
 
 
 def file_preparation(pear_merged_loc, metadata, folder_location, base_quality):
@@ -188,7 +193,7 @@ def analysis_for_nacent_nucleotides(sna):
         t_read = sequenced_df.shape[0]
         qual = base_qual.shape[0]
 
-        print(t_read, qual)
+        # print(t_read, qual)
         if t_read == qual:
             sequenced_df["base_quality"] = base_qual["base_quality"]
 
@@ -1069,12 +1074,6 @@ for region in regions[0:1]:
         number_of_tc_mutations_plot(region, time)
         count_number_of_different_pos_tc_mutations(region, time)
 
-
-
-TO-DO:
-    make pear merged reads an input: pear_merged_dir = "/Users/olalekan/Desktop/TL_seq_App/inputs/pear_merged"
-    make base quality directory an input: base_qual_dir= "/Users/olalekan/Desktop/TL_seq_App/inputs/base_quality"
-
  """
 
 
@@ -1082,42 +1081,49 @@ def main():
     parser = argparse.ArgumentParser(description="Identify newly transcribed reads")
     parser.add_argument(
         "--folder_location",
+        "-f",
         type=str,
-        default="",
+        required=True,
         help="Directory to save the output for the analysis",
     )
     parser.add_argument(
         "--pear_merged_loc",
+        "-p",
         type=str,
-        default="",
+        required=True,
         help="Directory for merged output files.",
     )
     parser.add_argument(
         "--base_quality",
+        "-b",
         type=str,
-        default="",
+        required=True,
         help="directory of the base_quality",
     )
     parser.add_argument(
         "--metadata",
+        "-m",
         type=str,
-        default="",
+        required=True,
         help="Path to the sample metadata csv file.",
     )
     parser.add_argument(
         "--vcf_file",
+        "-v",
         type=str,
-        default="",
+        required=True,
         help="Path to the VCF file for SNPs",
     )
     parser.add_argument(
         "--ref_loc",
+        "-r",
         type=str,
-        default="",
+        required=True,
         help="Path to the reference sequence file for the sample",
     )
     parser.add_argument(
         "--chromosome",
+        "-chr",
         type=int,
         default=None,
         choices=[
@@ -1149,22 +1155,26 @@ def main():
             "x",
             "y",
         ],
+        required=True,
         help="chromosome in which the gene of interest is located.",
     )
     parser.add_argument(
         "--gene_pos_start",
+        "-gs",
         type=int,
-        default=0,
+        required=True,
         help="Start position of the gene of interest.",
     )
     parser.add_argument(
         "--gene_pos_end",
+        "-ge",
         type=int,
-        default=0,
+        required=True,
         help="End position of the gene of interest.",
     )
     parser.add_argument(
         "--strandedness",
+        "-s",
         type=str,
         default="-",
         choices=["+", "-"],
@@ -1212,6 +1222,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-# The to fix in the above is that it runs multipe samples at once - such that it does a sample at a time.

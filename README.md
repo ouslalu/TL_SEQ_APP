@@ -11,7 +11,7 @@ This application estimates new RNA transcripts using metabolic labelling which c
 
 
 #### **Usage:**
-Usage:
+
 
 python fragment_preprocessing.py [Options]
 

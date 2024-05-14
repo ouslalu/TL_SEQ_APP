@@ -1,0 +1,15 @@
+#setup
+build
+*.egg-info
+
+
+#big input files
+inputs/base_quality/*
+inputs/pear_merged/*
+inputs/reference_gene/*
+
+
+# SNP
+SNP/*
+Summary/*
+

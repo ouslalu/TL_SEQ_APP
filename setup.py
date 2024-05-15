@@ -26,16 +26,15 @@ setuptools.setup(
         "matplotlib",
         "requests",
         "Biopython",
-        "glob",
+        "glob2",
         "Seaborn",
         "pysam",
-        "itertools",
     ],
     packages=setuptools.find_packages(),
     python_requires=">=3.6",
     entry_points={
         "console_scripts": [
-            "TLseq = fragment_preprocessing.cli:main",
+            "TLseq = fragment_tl_seq.cli:main",
         ]
     },
 )
